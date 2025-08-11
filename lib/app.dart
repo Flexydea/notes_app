@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:notes_app/core/routing/app_router.dart';
 import 'package:notes_app/data/models/category.dart';
 import 'package:notes_app/data/services/hive_service.dart';
 
@@ -8,13 +9,13 @@ class NotesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Notes App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.light(useMaterial3: true),
       darkTheme: ThemeData.dark(useMaterial3: true),
       themeMode: ThemeMode.system,
-      home: const _BootGate(),
+      routerConfig: appRouter,
     );
   }
 }
