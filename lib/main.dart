@@ -12,7 +12,8 @@ Future<void> main() async {
   Hive.registerAdapter(NoteAdapter());
   Hive.registerAdapter(CategoryAdapter());
 
-  await HiveService.init();
+  // await Hive.deleteBoxFromDisk('categoriesBox');
+  // await HiveService.init();
 
   runApp(const NotesApp());
 }

@@ -1,12 +1,13 @@
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:notes_app/data/models/note.dart';
 import 'package:uuid/uuid.dart';
 import 'package:notes_app/data/models/category.dart';
 import 'package:uuid/uuid.dart';
 
 class HiveService {
-  static const noteBoxName = 'notesBox';
-  static const categoryBoxName = 'categoriesBox';
+  static const categoriesBoxName = 'categoriesBox';
+  static const notesBoxName = 'notesBox';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -16,15 +17,22 @@ class HiveService {
     // Hive.registerAdapter(CategoryAdapter());
 
     //Open boxes
-    await Hive.openBox(noteBoxName);
-    await Hive.openBox(categoryBoxName);
+    // await Hive.openBox(notesBoxName);
+    // await Hive.openBox(categoriesBoxName);
 
+    if (Hive.isBoxOpen(notesBoxName)) {
+      await Hive.box(notesBoxName).close();
+    }
+    if (Hive.isBoxOpen(categoriesBoxName)) {
+      await Hive.box(categoriesBoxName).close();
+    }
     // --- Seed default categories here ---
 
-    final box = Hive.box<Category>(categoryBoxName);
-    if (box.isEmpty) {
+    await Hive.openBox<Note>(notesBoxName);
+    final categories = await Hive.openBox<Category>(categoriesBoxName);
+    if (categories.isEmpty) {
       final uuid = const Uuid();
-      box.addAll([
+      categories.addAll([
         Category(
           id: uuid.v4(),
           name: 'Work',
@@ -47,6 +55,6 @@ class HiveService {
     }
   }
 
-  static Box get notesBox => Hive.box(noteBoxName);
-  static Box get categoriesBox => Hive.box(categoryBoxName);
+  static Box get notesBox => Hive.box<Note>(notesBoxName);
+  static Box get categoriesBox => Hive.box<Category>(categoriesBoxName);
 }
