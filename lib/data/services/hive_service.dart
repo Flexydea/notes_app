@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:notes_app/data/models/note.dart';
-import 'package:uuid/uuid.dart';
 import 'package:notes_app/data/models/category.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,51 +8,41 @@ class HiveService {
   static const notesBoxName = 'notesBox';
 
   static Future<void> init() async {
-    await Hive.initFlutter();
-
-    // These adapters must be registered in main.dart BEFORE calling init()
-    // Hive.registerAdapter(NoteAdapter());
-    // Hive.registerAdapter(CategoryAdapter());
-
-    //Open boxes
-    // await Hive.openBox(notesBoxName);
-    // await Hive.openBox(categoriesBoxName);
-
-    if (Hive.isBoxOpen(notesBoxName)) {
-      await Hive.box(notesBoxName).close();
+    // Open boxes only if not already open
+    if (!Hive.isBoxOpen(notesBoxName)) {
+      await Hive.openBox<Note>(notesBoxName);
     }
-    if (Hive.isBoxOpen(categoriesBoxName)) {
-      await Hive.box(categoriesBoxName).close();
-    }
-    // --- Seed default categories here ---
+    if (!Hive.isBoxOpen(categoriesBoxName)) {
+      final categories = await Hive.openBox<Category>(categoriesBoxName);
 
-    await Hive.openBox<Note>(notesBoxName);
-    final categories = await Hive.openBox<Category>(categoriesBoxName);
-    if (categories.isEmpty) {
-      final uuid = const Uuid();
-      categories.addAll([
-        Category(
-          id: uuid.v4(),
-          name: 'Work',
-          colorHex: 0xFF1565C0, // blue
-          iconCodePoint: 0xe0af, // work icon
-        ),
-        Category(
-          id: uuid.v4(),
-          name: 'Personal',
-          colorHex: 0xFF2E7D32, // green
-          iconCodePoint: 0xe7fd, // person icon
-        ),
-        Category(
-          id: uuid.v4(),
-          name: 'Ideas',
-          colorHex: 0xFFF9A825, // yellow
-          iconCodePoint: 0xe3af, // lightbulb icon
-        ),
-      ]);
+      // Seed default categories if empty
+      if (categories.isEmpty) {
+        final uuid = const Uuid();
+        categories.addAll([
+          Category(
+            id: uuid.v4(),
+            name: 'Work',
+            colorHex: 0xFF1565C0,
+            iconCodePoint: 0xe0af,
+          ),
+          Category(
+            id: uuid.v4(),
+            name: 'Personal',
+            colorHex: 0xFF2E7D32,
+            iconCodePoint: 0xe7fd,
+          ),
+          Category(
+            id: uuid.v4(),
+            name: 'Ideas',
+            colorHex: 0xFFF9A825,
+            iconCodePoint: 0xe3af,
+          ),
+        ]);
+      }
     }
   }
 
-  static Box get notesBox => Hive.box<Note>(notesBoxName);
-  static Box get categoriesBox => Hive.box<Category>(categoriesBoxName);
+  static Box<Note> get notesBox => Hive.box<Note>(notesBoxName);
+  static Box<Category> get categoriesBox =>
+      Hive.box<Category>(categoriesBoxName);
 }

@@ -7,6 +7,8 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      backgroundColor: Colors.blueGrey,
+
       child: ListView(
         children: [
           const DrawerHeader(child: Text('Notes App')),
