@@ -18,6 +18,9 @@ class CategoryTasksScreen extends StatefulWidget {
 }
 
 class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
+  bool _selectionMode = false;
+  final Set<int> _selectedKeys = {}; //Hive keys of selected category
+
   String _filter = 'all';
   String _query = '';
   String _sort = 'newest'; // newest | oldest | favFirst
@@ -39,18 +42,84 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
       appBar: AppBar(
         title: Text(widget.category.name),
         actions: [
-          IconButton(
-            icon: Icon(_showSearch ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _showSearch = !_showSearch;
-                if (!_showSearch) {
-                  _query = '';
-                  _searchCtrl.clear();
+          if (_selectionMode) ...[
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text('${_selectedKeys.length} selected'),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Delete Selected',
+              icon: const Icon(Icons.delete),
+              onPressed: _selectedKeys.isEmpty
+                  ? null
+                  : () async {
+                      final ok = await _confirmDelete(context);
+                      if (ok == true) {
+                        final box = HiveService.notesBox;
+                        for (final k in _selectedKeys) {
+                          await box.delete(k);
+                        }
+                        setState(() {
+                          _selectedKeys.clear();
+                          _selectionMode = false;
+                        });
+                      }
+                    },
+            ),
+            IconButton(
+              tooltip: 'Exit selection',
+              icon: const Icon(Icons.close),
+              onPressed: () => setState(() {
+                _selectionMode = false;
+                _selectedKeys.clear();
+              }),
+            ),
+          ] else ...[
+            IconButton(
+              icon: Icon(_showSearch ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() {
+                  _showSearch = !_showSearch;
+                  if (!_showSearch) {
+                    _query = '';
+                    _searchCtrl.clear();
+                  }
+                });
+              },
+            ),
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                if (v == 'deleteCategory') {
+                  final ok = await _confirmDelete(context);
+                  if (ok == true) {
+                    // Delete notes in this category, then the category itself
+                    final notes = HiveService.notesBox;
+                    final cats = HiveService.categoriesBox;
+                    final idsToDelete = notes.values
+                        .where((n) => n.categoryId == widget.category.id)
+                        .map((n) => n.key as int)
+                        .toList();
+                    for (final k in idsToDelete) {
+                      await notes.delete(k);
+                    }
+                    // remove category (by index)
+                    final catKey = widget.category.key as int;
+                    await cats.delete(catKey);
+                    if (mounted)
+                      Navigator.pop(context); // back to Categories list
+                  }
                 }
-              });
-            },
-          ),
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'deleteCategory',
+                  child: Text('Delete category'),
+                ),
+              ],
+            ),
+          ],
         ],
         bottom: _showSearch
             ? PreferredSize(
@@ -109,23 +178,29 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
               return t.contains(q) || b.contains(q);
             }).toList();
           }
-          // sort based on _sort
-          if (_sort == 'newest') {
-            visible.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-          } else if (_sort == 'oldest') {
-            visible.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
-          } else if (_sort == 'favFirst') {
-            visible.sort((a, b) {
-              final af = a.isFavorite ?? false;
-              final bf = b.isFavorite ?? false;
-              if (af == bf) {
-                return b.updatedAt.compareTo(
-                  a.updatedAt,
-                ); // tie-breaker by date
-              }
-              return bf ? 1 : -1; // favorites come first
-            });
-          }
+
+          // Pins always float to top, then apply chosen sort within groups
+          int _cmpDate(Note a, Note b) => b.updatedAt.compareTo(a.updatedAt);
+          int _cmpDateAsc(Note a, Note b) => a.updatedAt.compareTo(b.updatedAt);
+
+          visible.sort((a, b) {
+            final ap = (a.isPinned ?? false);
+            final bp = (b.isPinned ?? false);
+            if (ap != bp) return bp ? 1 : -1; // pinned first
+
+            if (_sort == 'newest') return _cmpDate(a, b);
+            if (_sort == 'oldest') return _cmpDateAsc(a, b);
+
+            // favFirst as a third mode (optional)
+            if (_sort == 'favFirst') {
+              final af = (a.isFavorite ?? false);
+              final bf = (b.isFavorite ?? false);
+              if (af != bf) return bf ? 1 : -1; // favorites next
+              return _cmpDate(a, b);
+            }
+
+            return 0;
+          });
           // counts
           final favCount = allInCat
               .where((n) => (n.isFavorite ?? false))
@@ -249,6 +324,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                   itemBuilder: (context, index) {
                     final note = visible[index];
                     final key = note.key as int;
+                    final isSelected = _selectedKeys.contains(key);
 
                     final preview = note.body.isEmpty
                         ? '—'
@@ -261,6 +337,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                       background: _favBg(context),
                       secondaryBackground: _deleteBg(context),
                       confirmDismiss: (direction) async {
+                        if (_selectionMode)
+                          return false; // disable swipe while selecting
                         if (direction == DismissDirection.startToEnd) {
                           // Toggle favorite
                           final current = notesBox.get(key);
@@ -269,46 +347,138 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                               key,
                               current.copyWith(
                                 isFavorite: !(current.isFavorite ?? false),
+                                updatedAt: DateTime.now(),
                               ),
                             );
                           }
-                          // Keep tile (no remove)
                           return false;
                         } else {
                           final ok = await _confirmDelete(context);
                           if (ok == true) {
                             await notesBox.delete(key);
-                            // Remove tile (true)
                             return true;
                           }
                           return false;
                         }
                       },
-                      child: ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        tileColor: Theme.of(
-                          context,
-                        ).colorScheme.surfaceVariant.withOpacity(0.4),
-                        title: Text(
-                          note.title.isEmpty ? '(Untitled)' : note.title,
-                        ),
-                        subtitle: Text(preview),
-                        trailing: (note.isFavorite ?? false)
-                            ? const Icon(Icons.star)
-                            : const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => NoteEditorScreen(
-                                noteKey: key, // edit existing
-                                categoryId: widget.category.id,
-                              ),
-                            ),
-                          );
+                      child: InkWell(
+                        onLongPress: () {
+                          setState(() {
+                            _selectionMode = true;
+                            _selectedKeys.add(key);
+                          });
                         },
+                        onTap: () {
+                          if (_selectionMode) {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedKeys.remove(key);
+                                if (_selectedKeys.isEmpty)
+                                  _selectionMode = false;
+                              } else {
+                                _selectedKeys.add(key);
+                              }
+                            });
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => NoteEditorScreen(
+                                  noteKey: key,
+                                  categoryId: widget.category.id,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          tileColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceVariant
+                              .withOpacity(isSelected ? 0.7 : 0.4),
+                          leading: _selectionMode
+                              ? Checkbox(
+                                  value: isSelected,
+                                  onChanged: (v) {
+                                    setState(() {
+                                      if (v == true) {
+                                        _selectedKeys.add(key);
+                                      } else {
+                                        _selectedKeys.remove(key);
+                                        if (_selectedKeys.isEmpty)
+                                          _selectionMode = false;
+                                      }
+                                    });
+                                  },
+                                )
+                              : Icon(
+                                  (note.isFavorite ?? false)
+                                      ? Icons.star
+                                      : Icons.note_outlined,
+                                ),
+                          title: Text(
+                            note.title.isEmpty ? '(Untitled)' : note.title,
+                          ),
+                          subtitle: Text(_subtitleWithUpdated(note)),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (v) async {
+                              if (v == 'pin') {
+                                final cur = notesBox.get(key);
+                                if (cur != null) {
+                                  await notesBox.put(
+                                    key,
+                                    cur.copyWith(
+                                      isPinned: !(cur.isPinned ?? false),
+                                      updatedAt: DateTime.now(),
+                                    ),
+                                  );
+                                }
+                              } else if (v == 'fav') {
+                                final cur = notesBox.get(key);
+                                if (cur != null) {
+                                  await notesBox.put(
+                                    key,
+                                    cur.copyWith(
+                                      isFavorite: !(cur.isFavorite ?? false),
+                                      updatedAt: DateTime.now(),
+                                    ),
+                                  );
+                                }
+                              } else if (v == 'delete') {
+                                final ok = await _confirmDelete(context);
+                                if (ok == true) await notesBox.delete(key);
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              PopupMenuItem(
+                                value: 'pin',
+                                child: Text(
+                                  (note.isPinned ?? false) ? 'Unpin' : 'Pin',
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'fav',
+                                child: Text(
+                                  (note.isFavorite ?? false)
+                                      ? 'Unfavorite'
+                                      : 'Favorite',
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                            ],
+                            child: Icon(
+                              (note.isPinned ?? false)
+                                  ? Icons.push_pin
+                                  : Icons.more_vert,
+                            ),
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -334,6 +504,19 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
         icon: const Icon(Icons.add),
       ),
     );
+  }
+
+  String _fmt2(int n) => n.toString().padLeft(2, '0');
+
+  String _subtitleWithUpdated(Note n) {
+    final updated = n.updatedAt; // DateTime from your model
+    final date =
+        '${updated.year}-${_fmt2(updated.month)}-${_fmt2(updated.day)} ${_fmt2(updated.hour)}:${_fmt2(updated.minute)}';
+    final bodyPreview = n.body.isEmpty
+        ? ''
+        : (n.body.length > 60 ? '${n.body.substring(0, 60)}…' : n.body);
+    // Show “Last updated: … • preview”
+    return 'Last updated: $date${bodyPreview.isNotEmpty ? ' • $bodyPreview' : ''}';
   }
 }
 
