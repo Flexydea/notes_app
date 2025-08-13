@@ -20,13 +20,9 @@ Built as part of my Flutter learning journey and portfolio.
 
 ## 📸 Screenshots
 
-| Drawer | Categories | Notes List |
-|--------|------------|------------|
-| ![Drawer](assets/animations/screenshots/drawer.jpg) | ![Categories](assets/animations/screenshots/categories.jpg) | ![Notes List](assets/animations/screenshots/notelist.jpg) |
-
-| Empty Notes | Note Editor | Search Results |
-|-------------|-------------|----------------|
-| ![Empty Notes](assets/animations/screenshots/emptynotelist.jpg) 
+| Drawer | Categories | Notes List | Empty Notes |
+|--------|------------|------------|-------------|
+| ![Drawer](assets/animations/screenshots/drawer.jpg) | ![Categories](assets/animations/screenshots/categories.jpg) | ![Notes List](assets/animations/screenshots/notelist.jpg) | ![Empty Notes](assets/animations/screenshots/emptynotelist.jpg) |
 
 ---
 
