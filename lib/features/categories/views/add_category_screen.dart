@@ -42,6 +42,10 @@ class _AddCategoryScreenState extends State<AddCategoryScreen> {
     Icons.task_alt,
     Icons.event,
     Icons.note,
+    Icons.movie,
+    Icons.fitness_center,
+    Icons.warning,
+    Icons.flight,
   ];
 
   // active current selectors on the form

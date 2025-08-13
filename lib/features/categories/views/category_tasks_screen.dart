@@ -1,3 +1,4 @@
+// lib/features/categories/views/category_tasks_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -17,16 +18,73 @@ class CategoryTasksScreen extends StatefulWidget {
 }
 
 class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
-  // all | fav
-  String _filter = 'all'; // default view
-  String _query = ''; //seach text
+  String _filter = 'all';
+  String _query = '';
+
+  bool _showSearch = false;
+  final TextEditingController _searchCtrl = TextEditingController(); // NEW
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final notesBox = HiveService.notesBox;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.category.name)),
+      appBar: AppBar(
+        title: Text(widget.category.name),
+        actions: [
+          IconButton(
+            icon: Icon(_showSearch ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _query = '';
+                  _searchCtrl.clear();
+                }
+              });
+            },
+          ),
+        ],
+        bottom: _showSearch
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(56),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    autofocus: true,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Search notes…',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() => _query = '');
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      isDense: true,
+                    ),
+                    onChanged: (val) =>
+                        setState(() => _query = val), // LIVE FILTER
+                    onSubmitted: (val) => setState(() => _query = val),
+                  ),
+                ),
+              )
+            : null,
+      ),
       body: ValueListenableBuilder(
         valueListenable: notesBox.listenable(),
         builder: (context, Box<Note> box, _) {
@@ -37,9 +95,19 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 
           // 2) apply view filter
           final showFavOnly = _filter == 'fav';
-          final visible = showFavOnly
+          var visible = showFavOnly
               ? allInCat.where((n) => (n.isFavorite ?? false)).toList()
               : allInCat;
+
+          // 3) search filter (title or body, case-insensitive)
+          final q = _query.trim().toLowerCase();
+          if (q.isNotEmpty) {
+            visible = visible.where((n) {
+              final t = n.title.toLowerCase();
+              final b = n.body.toLowerCase();
+              return t.contains(q) || b.contains(q);
+            }).toList();
+          }
 
           // counts
           final favCount = allInCat
@@ -57,11 +125,19 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                   Text(
                     showFavOnly
                         ? 'No favorites yet'
-                        : 'No items in this category',
+                        : (_query.isNotEmpty
+                              ? 'No results for "$_query"'
+                              : 'No items in this category'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 6),
-                  const Text('Tap + to create one'),
+                  if (_query.isNotEmpty)
+                    TextButton(
+                      onPressed: () => setState(() => _query = ''),
+                      child: const Text('Clear search'),
+                    )
+                  else
+                    const Text('Tap + to create one'),
                 ],
               ),
             );
@@ -79,6 +155,14 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const Spacer(),
+                    if (_query.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: InputChip(
+                          label: Text('“$_query”'),
+                          onDeleted: () => setState(() => _query = ''),
+                        ),
+                      ),
                     PopupMenuButton<String>(
                       initialValue: _filter,
                       itemBuilder: (_) => const [
@@ -112,7 +196,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final note = visible[index];
-                    final key = note.key;
+                    final key = note.key as int;
 
                     final preview = note.body.isEmpty
                         ? '—'
@@ -163,12 +247,11 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                             ? const Icon(Icons.star)
                             : const Icon(Icons.chevron_right),
                         onTap: () {
-                          final int noteKey = note.key as int;
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => NoteEditorScreen(
-                                noteKey: noteKey as int,
+                                noteKey: key, // edit existing
                                 categoryId: widget.category.id,
                               ),
                             ),
@@ -188,7 +271,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => NoteEditorScreen(categoryId: widget.category.id),
+              builder: (_) =>
+                  NoteEditorScreen(categoryId: widget.category.id), // new note
             ),
           );
         },
@@ -197,12 +281,11 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
       ),
     );
   }
-
-  // helpers (same as before) ...
 }
-//////////////helpers block /////////////////
 
-//swip right backgorund - "Faourite"
+//////////////// helpers ////////////////
+
+// swipe right background - "Favorite"
 Widget _favBg(BuildContext context) {
   return Container(
     decoration: BoxDecoration(
@@ -221,14 +304,14 @@ Widget _favBg(BuildContext context) {
   );
 }
 
-//swipe ;eft backgoround - 'delete'
+// swipe left background - "Delete"
 Widget _deleteBg(BuildContext context) {
   return Container(
     decoration: BoxDecoration(
-      color: Colors.amber.withOpacity(0.9),
+      color: Colors.red.withOpacity(0.9),
       borderRadius: BorderRadius.circular(16),
     ),
-    padding: EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 16),
     alignment: Alignment.centerRight,
     child: const Row(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -241,7 +324,7 @@ Widget _deleteBg(BuildContext context) {
   );
 }
 
-//confirm delee with lottie
+// confirm delete with lottie
 Future<bool?> _confirmDelete(BuildContext context) async {
   bool confirmed = false;
   await showDialog(
@@ -270,7 +353,7 @@ Future<bool?> _confirmDelete(BuildContext context) async {
               confirmed = false;
               Navigator.pop(context);
             },
-            child: const Text('cancel'),
+            child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
@@ -284,4 +367,49 @@ Future<bool?> _confirmDelete(BuildContext context) async {
     },
   );
   return confirmed;
+}
+
+/// Compact search delegate used by the AppBar search icon
+class _NoteSearchDelegate extends SearchDelegate<String?> {
+  _NoteSearchDelegate({String initialQuery = ''}) {
+    query = initialQuery;
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      if (query.isNotEmpty)
+        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => close(context, null),
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return Center(
+      child: ElevatedButton(
+        onPressed: () => close(context, query),
+        child: Text('Search “$query”'),
+      ),
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return const Center(child: Text('Type to search notes…'));
+    }
+    return ListTile(
+      leading: const Icon(Icons.search),
+      title: Text(query),
+      onTap: () => close(context, query),
+    );
+  }
 }
