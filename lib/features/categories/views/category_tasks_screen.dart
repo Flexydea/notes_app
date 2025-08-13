@@ -20,6 +20,7 @@ class CategoryTasksScreen extends StatefulWidget {
 class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
   String _filter = 'all';
   String _query = '';
+  String _sort = 'newest'; // newest | oldest | favFirst
 
   bool _showSearch = false;
   final TextEditingController _searchCtrl = TextEditingController(); // NEW
@@ -108,7 +109,23 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
               return t.contains(q) || b.contains(q);
             }).toList();
           }
-
+          // sort based on _sort
+          if (_sort == 'newest') {
+            visible.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+          } else if (_sort == 'oldest') {
+            visible.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+          } else if (_sort == 'favFirst') {
+            visible.sort((a, b) {
+              final af = a.isFavorite ?? false;
+              final bf = b.isFavorite ?? false;
+              if (af == bf) {
+                return b.updatedAt.compareTo(
+                  a.updatedAt,
+                ); // tie-breaker by date
+              }
+              return bf ? 1 : -1; // favorites come first
+            });
+          }
           // counts
           final favCount = allInCat
               .where((n) => (n.isFavorite ?? false))
@@ -181,6 +198,41 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                           ),
                           const SizedBox(width: 6),
                           const Icon(Icons.filter_list),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Sort menu (Newest / Oldest / Favorites first)
+                    PopupMenuButton<String>(
+                      initialValue: _sort,
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          value: 'newest',
+                          child: Text('Sort: Newest first'),
+                        ),
+                        PopupMenuItem(
+                          value: 'oldest',
+                          child: Text('Sort: Oldest first'),
+                        ),
+                        PopupMenuItem(
+                          value: 'favFirst',
+                          child: Text('Sort: Favorites first'),
+                        ),
+                      ],
+                      onSelected: (v) => setState(() => _sort = v),
+                      child: Row(
+                        children: [
+                          Text(
+                            _sort == 'newest'
+                                ? 'Newest'
+                                : _sort == 'oldest'
+                                ? 'Oldest'
+                                : 'Fav first',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.sort),
                         ],
                       ),
                     ),
@@ -267,6 +319,8 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.blueGrey,
+        foregroundColor: Colors.white,
         onPressed: () {
           Navigator.push(
             context,
@@ -276,7 +330,7 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
             ),
           );
         },
-        label: const Text('Add'),
+        label: const Text('Add Note'),
         icon: const Icon(Icons.add),
       ),
     );
