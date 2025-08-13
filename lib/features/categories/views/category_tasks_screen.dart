@@ -391,92 +391,259 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
                             );
                           }
                         },
-                        child: ListTile(
-                          shape: RoundedRectangleBorder(
+                        child: AnimatedContainer(
+                          // Subtle elevation + accent when pinned or selected
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOut,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceVariant.withOpacity(0.7)
+                                : _tileBg(context),
                             borderRadius: BorderRadius.circular(16),
+                            boxShadow: (note.isPinned ?? false)
+                                ? [
+                                    BoxShadow(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.15),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ]
+                                : [],
                           ),
-                          tileColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceVariant
-                              .withOpacity(isSelected ? 0.7 : 0.4),
-                          leading: _selectionMode
-                              ? Checkbox(
-                                  value: isSelected,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      if (v == true) {
-                                        _selectedKeys.add(key);
-                                      } else {
-                                        _selectedKeys.remove(key);
-                                        if (_selectedKeys.isEmpty)
-                                          _selectionMode = false;
+                          child: Stack(
+                            children: [
+                              // Left accent stripe when pinned
+                              if (note.isPinned ?? false)
+                                Positioned.fill(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      width: 4,
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary.withOpacity(0.8),
+                                        borderRadius:
+                                            const BorderRadius.horizontal(
+                                              left: Radius.circular(16),
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // Content
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                    horizontal: 6,
+                                  ),
+                                  leading: _selectionMode
+                                      ? Checkbox(
+                                          value: isSelected,
+                                          onChanged: (v) {
+                                            setState(() {
+                                              if (v == true) {
+                                                _selectedKeys.add(key);
+                                              } else {
+                                                _selectedKeys.remove(key);
+                                                if (_selectedKeys.isEmpty)
+                                                  _selectionMode = false;
+                                              }
+                                            });
+                                          },
+                                        )
+                                      : Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            // Base icon
+                                            Icon(
+                                              (note.isFavorite ?? false)
+                                                  ? Icons.star
+                                                  : Icons.note,
+                                              // No hard color; let theme handle it
+                                            ),
+                                            // Small favorite dot badge
+                                            if (note.isFavorite ?? false)
+                                              Positioned(
+                                                right: -2,
+                                                top: -2,
+                                                child: AnimatedScale(
+                                                  scale: 1.0,
+                                                  duration: const Duration(
+                                                    milliseconds: 180,
+                                                  ),
+                                                  child: Container(
+                                                    width: 10,
+                                                    height: 10,
+                                                    decoration: BoxDecoration(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.secondary,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                        color: Theme.of(
+                                                          context,
+                                                        ).colorScheme.surface,
+                                                        width: 1.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+
+                                  // Title with highlight
+                                  title: RichText(
+                                    text: _highlight(
+                                      note.title.isEmpty
+                                          ? '(Untitled)'
+                                          : note.title,
+                                      _query,
+                                      Theme.of(context).textTheme.titleMedium!,
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium!.copyWith(
+                                        backgroundColor: _accentFor(context),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+
+                                  // Subtitle: “Last updated … • preview” with query highlight in preview
+                                  subtitle: RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text:
+                                              '${_subtitleWithUpdated(note)}\n',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                        _highlight(
+                                          preview,
+                                          _query,
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall!,
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall!.copyWith(
+                                            backgroundColor: _accentFor(
+                                              context,
+                                            ),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+
+                                  // Trailing: pin/fav menu (kept from your logic)
+                                  trailing: PopupMenuButton<String>(
+                                    onSelected: (v) async {
+                                      if (v == 'pin') {
+                                        final cur = notesBox.get(key);
+                                        if (cur != null) {
+                                          await notesBox.put(
+                                            key,
+                                            cur.copyWith(
+                                              isPinned:
+                                                  !(cur.isPinned ?? false),
+                                              updatedAt: DateTime.now(),
+                                            ),
+                                          );
+                                        }
+                                      } else if (v == 'fav') {
+                                        final cur = notesBox.get(key);
+                                        if (cur != null) {
+                                          await notesBox.put(
+                                            key,
+                                            cur.copyWith(
+                                              isFavorite:
+                                                  !(cur.isFavorite ?? false),
+                                              updatedAt: DateTime.now(),
+                                            ),
+                                          );
+                                        }
+                                      } else if (v == 'delete') {
+                                        final ok = await _confirmDelete(
+                                          context,
+                                        );
+                                        if (ok == true)
+                                          await notesBox.delete(key);
                                       }
-                                    });
+                                    },
+                                    itemBuilder: (_) => [
+                                      PopupMenuItem(
+                                        value: 'pin',
+                                        child: Text(
+                                          (note.isPinned ?? false)
+                                              ? 'Unpin'
+                                              : 'Pin',
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'fav',
+                                        child: Text(
+                                          (note.isFavorite ?? false)
+                                              ? 'Unfavorite'
+                                              : 'Favorite',
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('Delete'),
+                                      ),
+                                    ],
+                                    child: Icon(
+                                      (note.isPinned ?? false)
+                                          ? Icons.push_pin
+                                          : Icons.more_vert,
+                                    ),
+                                  ),
+
+                                  // Tap/Long-press kept as is
+                                  onTap: () {
+                                    if (_selectionMode) {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedKeys.remove(key);
+                                          if (_selectedKeys.isEmpty)
+                                            _selectionMode = false;
+                                        } else {
+                                          _selectedKeys.add(key);
+                                        }
+                                      });
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => NoteEditorScreen(
+                                            noteKey: key,
+                                            categoryId: widget.category.id,
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   },
-                                )
-                              : Icon(
-                                  (note.isFavorite ?? false)
-                                      ? Icons.star
-                                      : Icons.note_outlined,
                                 ),
-                          title: Text(
-                            note.title.isEmpty ? '(Untitled)' : note.title,
-                          ),
-                          subtitle: Text(_subtitleWithUpdated(note)),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (v) async {
-                              if (v == 'pin') {
-                                final cur = notesBox.get(key);
-                                if (cur != null) {
-                                  await notesBox.put(
-                                    key,
-                                    cur.copyWith(
-                                      isPinned: !(cur.isPinned ?? false),
-                                      updatedAt: DateTime.now(),
-                                    ),
-                                  );
-                                }
-                              } else if (v == 'fav') {
-                                final cur = notesBox.get(key);
-                                if (cur != null) {
-                                  await notesBox.put(
-                                    key,
-                                    cur.copyWith(
-                                      isFavorite: !(cur.isFavorite ?? false),
-                                      updatedAt: DateTime.now(),
-                                    ),
-                                  );
-                                }
-                              } else if (v == 'delete') {
-                                final ok = await _confirmDelete(context);
-                                if (ok == true) await notesBox.delete(key);
-                              }
-                            },
-                            itemBuilder: (_) => [
-                              PopupMenuItem(
-                                value: 'pin',
-                                child: Text(
-                                  (note.isPinned ?? false) ? 'Unpin' : 'Pin',
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'fav',
-                                child: Text(
-                                  (note.isFavorite ?? false)
-                                      ? 'Unfavorite'
-                                      : 'Favorite',
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete'),
                               ),
                             ],
-                            child: Icon(
-                              (note.isPinned ?? false)
-                                  ? Icons.push_pin
-                                  : Icons.more_vert,
-                            ),
                           ),
                         ),
                       ),
@@ -521,6 +688,36 @@ class _CategoryTasksScreenState extends State<CategoryTasksScreen> {
 }
 
 //////////////// helpers ////////////////
+///
+///
+
+// Colors that play nice with light/dark
+Color _accentFor(BuildContext c) =>
+    Theme.of(c).colorScheme.primary.withOpacity(0.12);
+Color _tileBg(BuildContext c) =>
+    Theme.of(c).colorScheme.surfaceVariant.withOpacity(0.4);
+
+// Highlight search hits in title/body preview
+InlineSpan _highlight(String text, String query, TextStyle base, TextStyle hi) {
+  if (query.isEmpty) return TextSpan(text: text, style: base);
+  final q = query.toLowerCase();
+  final src = text;
+  final lower = text.toLowerCase();
+
+  final spans = <TextSpan>[];
+  int i = 0;
+  while (true) {
+    final idx = lower.indexOf(q, i);
+    if (idx < 0) {
+      spans.add(TextSpan(text: src.substring(i), style: base));
+      break;
+    }
+    if (idx > i) spans.add(TextSpan(text: src.substring(i, idx), style: base));
+    spans.add(TextSpan(text: src.substring(idx, idx + q.length), style: hi));
+    i = idx + q.length;
+  }
+  return TextSpan(children: spans);
+}
 
 // swipe right background - "Favorite"
 Widget _favBg(BuildContext context) {
