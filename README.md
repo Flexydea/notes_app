@@ -1,16 +1,42 @@
-# notes_app
+# 📝 Notes App
 
-A new Flutter project.
+A modern Flutter **Notes application** with **Hive local storage**, **category management**, and **beautiful animations**.  
+Built as part of my Flutter learning journey and portfolio.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## ✨ Features
+- 📂 Create, edit, and delete categories  
+- 📝 Add, edit, pin, favorite, and delete notes  
+- 🔍 Live search within a category (filters as you type)  
+- ⭐ Favorites filter  
+- 📅 Last updated date display under each note  
+- 📌 Pinned notes stay at the top of the list  
+- 🗑 Multi-select delete for quick cleanup  
+- 🖼 Lottie animations for empty states & delete confirmation  
+- 🌙 Dark mode (system-based)
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📸 Screenshots
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| Drawer | Categories | Notes List |
+|--------|------------|------------|
+| ![Drawer](assets/animations/screenshots/drawer.jpg) | ![Categories](assets/animations/screenshots/categories.jpg) | ![Notes List](assets/animations/screenshots/notelist.jpg) |
+
+| Empty Notes | Note Editor | Search Results |
+|-------------|-------------|----------------|
+| ![Empty Notes](assets/animations/screenshots/emptynotelist.jpg) | ![Note Editor](assets/animations/screenshots/noteeditor.jpg) | ![Search Results](assets/animations/screenshots/searchresults.jpg) |
+
+---
+
+## 🎥 Demo (Full Video)
+[Watch the full demo](assets/animations/screenshots/demo.mp4)
+---
+
+## 🚀 Getting Started
+
+### 1️⃣ Clone the repository
+```bash
+git clone https://github.com/Flexydea/notes_app.git
+cd notes_app
