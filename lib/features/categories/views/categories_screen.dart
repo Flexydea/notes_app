@@ -4,6 +4,7 @@ import 'package:notes_app/core/widgets/app_drawer.dart';
 import 'package:notes_app/data/models/category.dart';
 import 'package:notes_app/data/services/hive_service.dart';
 import 'package:notes_app/features/categories/views/add_category_screen.dart';
+import 'package:notes_app/features/categories/views/category_tasks_screen.dart';
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
@@ -46,7 +47,12 @@ class CategoriesScreen extends StatelessWidget {
                 title: Text(category.name), // NEW: Category name from Hive
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // TODO: Navigate to category-specific notes later
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CategoryTasksScreen(category: category),
+                    ),
+                  );
                 },
               );
             },
@@ -55,16 +61,18 @@ class CategoriesScreen extends StatelessWidget {
       ),
 
       // FAB for adding a category (next step)
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.blueGrey,
         foregroundColor: Colors.white,
+
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddCategoryScreen()),
+            MaterialPageRoute(builder: (_) => const AddCategoryScreen()),
           );
         },
-        child: const Icon(Icons.add),
+        label: const Text('Add Category'),
+        icon: const Icon(Icons.add),
       ),
     );
   }

@@ -12,14 +12,7 @@ class AppDrawer extends StatelessWidget {
       child: ListView(
         children: [
           const DrawerHeader(child: Text('Notes App')),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () {
-              Navigator.pop(context); // close drawer
-              context.go('/');
-            },
-          ),
+
           ListTile(
             leading: const Icon(Icons.category),
             title: const Text('Categories'),
