@@ -26,7 +26,7 @@ Built as part of my Flutter learning journey and portfolio.
 
 | Empty Notes | Note Editor | Search Results |
 |-------------|-------------|----------------|
-| ![Empty Notes](assets/animations/screenshots/emptynotelist.jpg) | ![Note Editor](assets/animations/screenshots/noteeditor.jpg) | ![Search Results](assets/animations/screenshots/searchresults.jpg) |
+| ![Empty Notes](assets/animations/screenshots/emptynotelist.jpg) 
 
 ---
 
