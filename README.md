@@ -26,9 +26,11 @@ Built as part of my Flutter learning journey and portfolio.
 
 ---
 
-## 🎥 Demo (Full Video)
-[Watch the full demo](assets/animations/screenshots/demo.mp4)
----
+## 🎥 Demo
+
+![Demo GIF](assets/animations/screenshots/demo.gif)  
+
+[▶ Watch the full demo video](assets/animations/screenshots/demo.mp4)
 
 ## 🚀 Getting Started
 
